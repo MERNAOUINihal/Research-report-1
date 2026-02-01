@@ -1,0 +1,548 @@
+---
+title: "Research part 1 - final"
+author: "MERNAOUI Nihal"
+format: html
+editor: visual
+---
+
+```{r}
+
+# Loading the required packages
+library(tidyverse)
+library(DiagrammeR)
+library(janitor)
+library(knitr)
+library(stringr)
+library(ggplot2)
+
+# Loading Afrobarometer data
+Afro <- read_csv("MOR_R10.Data_06June24.wtd_.final_.release_updated.13Feb25.csv")
+
+```
+
+# Introduction:
+
+Urban inequality in Morocco remains marked by persistent deficits in infrastructure, public services, and economic security within many urban neighborhoods. In such contexts, households face recurring exposure to material deprivation and insecurity. While these conditions are often framed as policy failures, they also shape how households adapt to constrained environments. Where formal welfare systems provide limited protection, informal support networks, particularly assistance from family, friends, and neighbors, play a central role in coping with risk and uncertainty. As shown by Moser (1998), social networks function as key assets for urban households facing structural vulnerability. Using Afrobarometer Round 10 data, this study examines how material deprivation and neighborhood conditions relate to reliance on informal support and perceived insecurity in urban Morocco.
+
+# Research question and hypotheses:
+
+This study asks the following research question:
+
+"How do material deprivation and neighborhood infrastructure conditions relate to households’ reliance on informal support networks and perceptions of neighborhood insecurity in urban Morocco?"
+
+As such, and based on existing work on urban vulnerability and informal coping mechanisms, the analysis tests two hypotheses:
+
+**H1: Economic precarity and informal support.**\
+Households experiencing higher levels of material deprivation are more likely to report receiving assistance from family members and from friends or neighbors.
+
+**H2: Infrastructure deficits and insecurity.**\
+Households living in under-serviced neighborhoods report higher levels of perceived neighborhood insecurity.
+
+```{r}
+
+#This is to visualize the research question, and how the hypothesis emerged. 
+
+
+grViz("
+digraph conceptual_model {
+
+  graph [layout = dot, rankdir = TB]
+
+  node [shape = ellipse, style = filled, fillcolor = \"#F2F2F2\", fontname = Helvetica]
+
+  material [label = \"Material Deprivation\"]
+  infra [label = \"Neighborhood Infrastructure\"]
+  support [label = \"Reliance on Informal Support Networks\"]
+  insecurity [label = \"Perceived Neighborhood Insecurity\"]
+
+  material -> support [label = \"H1\"]
+  material -> insecurity
+  infra -> support
+  infra -> insecurity [label = \"H2\"]
+
+}
+")
+
+```
+
+Figure 1 summarizes the conceptual framework underlying the research question and the two hypotheses examined in this study.
+
+## Data and Data Preparation
+
+### Data
+
+This study uses data from Afrobarometer Round 10 (Morocco, 2024), a nationally representative survey of Moroccan adults aged 18 and over. The dataset combines individual-level survey responses with enumerator-observed characteristics of respondents’ enumeration areas, allowing the analysis to link household conditions to neighborhood-level infrastructure and service access.
+
+### Data preparation
+
+The Afrobarometer dataset is already structured at the individual respondent level, with one row per respondent and one column per variable. No major data cleaning or reshaping was required. Data preparation consisted of selecting relevant variables, recoding categorical responses into analytically meaningful formats, and constructing descriptive indicators for material deprivation, neighborhood infrastructure, informal support, and perceived insecurity. Responses such as “No further response” were treated as missing values. All preparation steps were conducted in R and are fully reproducible.
+
+## Variables and Measures
+
+### Material deprivation
+
+Material deprivation is measured using Afrobarometer’s lived poverty indicators, which capture how frequently respondents experienced shortages of basic necessities during the past year. These include shortages of food, clean water, medical care, cooking fuel, and cash income. Higher values indicate greater levels of material deprivation.
+
+### Neighborhood infrastructure
+
+Neighborhood infrastructure conditions are proxied using enumerator-observed characteristics of respondents’ enumeration areas. These indicators capture access to basic services and facilities, as well as aspects of accessibility and road quality. Lower levels of service access and poorer infrastructure reflect more under-serviced neighborhood conditions.
+
+### Informal support networks
+
+Reliance on informal support networks is measured using survey questions asking whether respondents received assistance during the past year from (i) family members and (ii) friends or neighbors. These variables capture the extent to which households rely on informal social ties to cope with economic or social difficulties.
+
+### Perceived neighborhood insecurity
+
+Perceived insecurity is measured using respondents’ self-reported frequency of feeling unsafe in their home or neighborhood. Higher values indicate greater perceived insecurity.
+
+### Control variables
+
+Descriptive analyses also consider basic sociodemographic characteristics, including age, gender, education level, region of residence, and urban–rural location.
+
+## Descriptive Statistics
+
+This section presents descriptive statistics illustrating patterns of material deprivation, neighborhood conditions, reliance on informal support networks, and perceived insecurity among urban respondents. The objective is to document how these dimensions are distributed in the sample and how they relate to one another descriptively, without making causal claims.
+
+## The socio-demographic profile
+
+```{r}
+#Here, we are prepping the variables for the anlysis, by standerdizing them
+
+data_prep <- Afro %>%
+  mutate(
+    age = as.numeric(Q1),
+    gender = factor(Q101),
+    education = factor(Q96),
+    region = factor(REGION)
+  )
+
+data_urban <- data_prep %>%
+  filter(URBRUR == "Urban")
+
+#Table 1 for descriptive stats of variables of interest
+age_summary <- data_urban %>%
+  summarise(
+    mean_age = mean(age, na.rm = TRUE),
+    sd_age   = sd(age, na.rm = TRUE),
+    n_age    = sum(!is.na(age))
+  )
+
+gender_summary <- data_urban %>%
+  count(gender, name = "n") %>%
+  mutate(pct = 100 * n / sum(n))
+
+education_summary <- data_urban %>%
+  count(education, name = "n") %>%
+  mutate(pct = 100 * n / sum(n))
+
+region_summary <- data_urban %>%
+  count(region, name = "n") %>%
+  mutate(pct = 100 * n / sum(n))
+
+# Here, we are building a unified Table 1
+
+age_row <- age_summary %>%
+  transmute(
+    Variable = "Age (years)",
+    Category = "Mean (SD)",
+    Value = paste0(round(mean_age, 1), " (", round(sd_age, 1), ")")
+  )
+
+gender_rows <- gender_summary %>%
+  transmute(
+    Variable = "Gender",
+    Category = as.character(gender),
+    Value = paste0(n, " (", round(pct, 1), "%)")
+  )
+
+education_rows <- education_summary %>%
+  transmute(
+    Variable = "Education",
+    Category = as.character(education),
+    Value = paste0(n, " (", round(pct, 1), "%)")
+  )
+
+region_rows <- region_summary %>%
+  transmute(
+    Variable = "Region",
+    Category = as.character(region),
+    Value = paste0(n, " (", round(pct, 1), "%)")
+  )
+
+table1_final <- bind_rows(age_row, gender_rows, education_rows, region_rows)
+
+knitr::kable(
+  table1_final,
+  caption = "Table 1. Sociodemographic characteristics of urban respondents",
+  col.names = c("Variable", "Category", "Value")
+)
+
+```
+
+Table 1 summarizes the sociodemographic profile of the urban subsample (N = 808). Respondents have a mean age of 39.2 years (SD = 15.2), indicating substantial age heterogeneity. The gender distribution is nearly balanced (49.9% men, 50.1% women). Educational attainment is diverse: the largest categories are some university (14.6%), secondary/high school completed (13.6%), and post-secondary non-university qualifications (13.4%), while smaller shares report no formal schooling (5.7%) or post-graduate education (6.9%). Regionally, the sample is concentrated in Grand Casablanca–Settat (24.8%), followed by Rabat–Salé–Kénitra (15.8%) and Fès–Meknès (12.9%), reflecting the distribution of the urban population across major metropolitan areas.
+
+## Material deprivation
+
+```{r}
+#Material deprivation items (Q7A–Q7E) 
+#First, let's prepare the data
+#0=Never, 1=Once/twice, 2=Several, 3=Many, 4=Always, 9=Don't know
+
+lp_score <- function(x) {
+  x <- str_to_lower(str_trim(x))
+
+  case_when(
+    is.na(x) ~ NA_real_,
+    str_detect(x, "don't know|dont know|refus|no answer") ~ NA_real_,
+    str_detect(x, "^never") ~ 0,
+    str_detect(x, "once|twice") ~ 1,
+    str_detect(x, "several") ~ 2,
+    str_detect(x, "many") ~ 3,
+    str_detect(x, "always") ~ 4,
+    TRUE ~ NA_real_   # catches unexpected labels safely
+  )
+}
+
+dep_levels <- c("Never", "Once or twice", "Several times", "Many", "Always")
+
+data_urban <- data_urban %>%
+  mutate(
+    dep_food  = lp_score(Q7A),
+    dep_water = lp_score(Q7B),
+    dep_med   = lp_score(Q7C),
+    dep_fuel  = lp_score(Q7D),
+    dep_cash  = lp_score(Q7E),
+
+    dep_food_f  = factor(dep_food,  levels = 0:4, labels = dep_levels, ordered = TRUE),
+    dep_water_f = factor(dep_water, levels = 0:4, labels = dep_levels, ordered = TRUE),
+    dep_med_f   = factor(dep_med,   levels = 0:4, labels = dep_levels, ordered = TRUE),
+    dep_fuel_f  = factor(dep_fuel,  levels = 0:4, labels = dep_levels, ordered = TRUE),
+    dep_cash_f  = factor(dep_cash,  levels = 0:4, labels = dep_levels, ordered = TRUE),
+
+    # index (mean across available items)
+    dep_index = rowMeans(cbind(dep_food, dep_water, dep_med, dep_fuel, dep_cash), na.rm = TRUE)
+  )
+
+#Creating a table for material deprivation
+
+freq_n_pct_factor <- function(x) {
+  tab <- table(x, useNA = "no")
+  tibble(
+    Category = names(tab),
+    Value = paste0(as.integer(tab), " (", round(100 * tab / sum(tab), 1), "%)")
+  )
+}
+
+dep_table <- bind_rows(
+  freq_n_pct_factor(data_urban$dep_food_f)  %>% mutate(Variable = "Gone without enough food (Q7A)"),
+  freq_n_pct_factor(data_urban$dep_water_f) %>% mutate(Variable = "Gone without clean water (Q7B)"),
+  freq_n_pct_factor(data_urban$dep_med_f)   %>% mutate(Variable = "Gone without medical care (Q7C)"),
+  freq_n_pct_factor(data_urban$dep_fuel_f)  %>% mutate(Variable = "Gone without cooking fuel (Q7D)"),
+  freq_n_pct_factor(data_urban$dep_cash_f)  %>% mutate(Variable = "Gone without cash income (Q7E)")
+) %>% 
+  select(Variable, Category, Value)
+
+dep_index_row <- data_urban %>%
+  summarise(
+    Variable = "Material deprivation index (mean of Q7A–Q7E)",
+    Category = "Mean (SD)",
+    Value = paste0(round(mean(dep_index, na.rm = TRUE), 2),
+                   " (", round(sd(dep_index, na.rm = TRUE), 2), ")")
+  )
+
+dep_table_final <- bind_rows(dep_table, dep_index_row)
+
+knitr::kable(
+  dep_table_final,
+  caption = "Table 2. Material deprivation (lived poverty indicators) among urban respondents",
+  col.names = c("Variable", "Category", "Value")
+)
+
+
+
+ggplot(data_urban, aes(x = dep_index)) +
+  geom_histogram(binwidth = 0.5, color = "white") +
+  labs(
+    title = "Distribution of material deprivation among urban respondents",
+    x = "Material deprivation index (mean of Q7A–Q7E)",
+    y = "Number of respondents"
+  ) +
+  theme_minimal()
+```
+
+Table 2 presents the distribution of lived poverty indicators among urban respondents. Most respondents report never experiencing shortages of basic necessities, particularly food (87.7%) and cooking fuel (81.3%). However, material vulnerability remains non-negligible: cash income deprivation is the most prevalent dimension, with 37.6% of respondents reporting having gone without cash income at least once in the past year, and 4.3% reporting persistent deprivation. Medical care also emerges as a salient constraint, as 41.4% report at least occasional difficulty accessing healthcare. The composite material deprivation index (mean = 0.44, SD = 0.61) indicates generally low but uneven exposure to material hardship within urban contexts.
+
+## Informal support networks
+
+```{r}
+
+# Recoding from labels
+yn_recode <- function(x) {
+  x <- str_to_lower(str_trim(x))
+  case_when(
+    is.na(x) ~ NA_real_,
+    str_detect(x, "^yes") ~ 1,
+    str_detect(x, "^no")  ~ 0,
+    TRUE ~ NA_real_
+  )
+}
+
+data_urban <- data_urban %>%
+  mutate(
+    support_family = yn_recode(Q8A),  # relied on family
+    support_friends = yn_recode(Q8B)  # relied on friends
+  )
+
+#Building an informal support netwroks table
+
+support_table <- bind_rows(
+  data_urban %>%
+    count(support_family, name = "n") %>%
+    filter(!is.na(support_family)) %>%
+    mutate(
+      Variable = "Relied on family support (Q8A)",
+      Category = ifelse(support_family == 1, "Yes", "No"),
+      Value = paste0(n, " (", round(100 * n / sum(n), 1), "%)")
+    ),
+  data_urban %>%
+    count(support_friends, name = "n") %>%
+    filter(!is.na(support_friends)) %>%
+    mutate(
+      Variable = "Relied on friends support (Q8B)",
+      Category = ifelse(support_friends == 1, "Yes", "No"),
+      Value = paste0(n, " (", round(100 * n / sum(n), 1), "%)")
+    )
+) %>%
+  select(Variable, Category, Value)
+
+kable(
+  support_table,
+  caption = "Table 3. Reliance on informal support networks among urban respondents",
+  col.names = c("Variable", "Category", "Value")
+)
+
+
+```
+
+Table 3 summarizes reliance on informal support networks among urban respondents. Nearly one-third (30.2%) report having relied on family support, while reliance on friends is less common (13.9%). This asymmetry suggests that informal support in urban Morocco is primarily family-centered, with non-kin networks playing a more limited role, providing an empirical basis for examining how material deprivation may increase dependence on close social ties.
+
+## Perceived insecurity
+
+```{r}
+#Prepping the varibales of perceived insecurity
+
+data_urban <- data_urban %>%
+  mutate(
+    insecurity = case_when(
+      Q9 == "Never" ~ 0,
+      Q9 == "Just once or twice" ~ 1,
+      Q9 == "Several times" ~ 2,
+      Q9 == "Many times" ~ 3,
+      Q9 == "Always" ~ 4,
+      TRUE ~ NA_real_
+    ),
+    insecurity_f = factor(
+      insecurity,
+      levels = 0:4,
+      labels = c("Never", "Once or twice", "Several times", "Many times", "Always"),
+      ordered = TRUE
+    )
+  )
+
+#Table 4 for perceived insecurity
+
+insec_table <- data_urban %>%
+  count(insecurity_f, name = "n") %>%
+  mutate(
+    Variable = "Felt unsafe in home or neighborhood (Q9)",
+    Category = as.character(insecurity_f),
+    Value = paste0(n, " (", round(100 * n / sum(n), 1), "%)")
+  ) %>%
+  select(Variable, Category, Value)
+
+kable(
+  insec_table,
+  caption = "Table 4. Perceived insecurity among urban respondents",
+  col.names = c("Variable", "Category", "Value")
+)
+
+
+
+
+ggplot(data_urban, aes(x = insecurity_f)) +
+  geom_bar(color = "white") +
+  labs(
+    title = "Frequency of perceived neighborhood insecurity",
+    x = "Frequency of feeling unsafe",
+    y = "Number of respondents"
+  ) +
+  theme_minimal()
+
+```
+
+Table 4 reports perceived insecurity among urban respondents, measured as the frequency of having felt unsafe in one’s home or neighborhood over the past year. While a majority (64.4%) report never feeling unsafe, a sizeable minority (35.6%) report experiencing insecurity at least once, including 16.8% who report feeling unsafe several times or more. This dispersion suggests meaningful variation in perceived neighborhood safety across urban contexts, motivating the examination of how neighborhood infrastructure conditions relate to insecurity perceptions.
+
+## Neighborhood infrastructure
+
+In Afrobarometer R10, neighborhood infrastructure is measured at the EA (Enumeration Area) level, not via perceptions.
+
+```{r}
+# Neighborhood infrastructure (EA-level)
+
+data_urban <- data_urban %>%
+  mutate(
+    # Services: Yes = 1, No = 0
+    infra_electricity = if_else(EA_SVC_A == "Yes", 1, 0, missing = NA_real_),
+    infra_water       = if_else(EA_SVC_B == "Yes", 1, 0, missing = NA_real_),
+    infra_sewage      = if_else(EA_SVC_C == "Yes", 1, 0, missing = NA_real_),
+
+    # Roads: any "Paved ..." = 1, otherwise 0
+    infra_roads = case_when(
+      is.na(EA_ROAD_A) ~ NA_real_,
+      str_detect(str_to_lower(EA_ROAD_A), "paved") ~ 1,
+      TRUE ~ 0
+    ),
+
+    # Simple infrastructure index (0–1)
+    infra_index = rowMeans(
+      cbind(infra_electricity, infra_water, infra_sewage, infra_roads),
+      na.rm = TRUE
+    )
+  )
+
+```
+
+We notice here that the current infrastructure measure has zero variance in the urban subsample. With zero variance, we can not use it in a model, we can’t test H2 with it, and a descriptive table would be pointless. We need to therefore find which EA variables vary, to use them as proxies for infrastructure.
+
+```{r}
+ea_vars <- data_urban %>% select(starts_with("EA_"))
+
+var_check <- tibble(
+  variable = names(ea_vars),
+  n_unique = sapply(ea_vars, function(x) n_distinct(x)),
+  top_values = sapply(ea_vars, function(x) paste(names(sort(table(x), decreasing = TRUE))[1:min(3, length(unique(x)))], collapse = " | "))
+) %>%
+  arrange(desc(n_unique))
+
+#Now that we see which variables vary, we proceed: 
+
+data_urban <- data_urban %>%
+  mutate(
+    # Road quality: ordinal → numeric (higher = better)
+    road_quality = case_when(
+      EA_ROAD_C == "Very good" ~ 3,
+      EA_ROAD_C == "Good"      ~ 2,
+      EA_ROAD_C == "Fair"      ~ 1,
+      EA_ROAD_C == "Poor"      ~ 0,
+      TRUE ~ NA_real_
+    ),
+
+    # Paved road (binary)
+    paved_road = if_else(
+      str_detect(str_to_lower(EA_ROAD_A), "paved"),
+      1, 0, missing = NA_real_
+    ),
+
+    # Facilities (binary presence)
+    fac_market = if_else(EA_FAC_A == "Yes", 1, 0, missing = NA_real_),
+    fac_school = if_else(EA_FAC_C == "Yes", 1, 0, missing = NA_real_),
+
+    # Security infrastructure (binary)
+    sec_post   = if_else(EA_SEC_A == "Yes", 1, 0, missing = NA_real_)
+  )
+
+#Building the infrastructure index: 
+
+data_urban <- data_urban %>%
+  mutate(
+    infra_index = rowMeans(
+      cbind(
+        road_quality,
+        paved_road,
+        fac_market,
+        fac_school,
+        sec_post
+      ),
+      na.rm = TRUE
+    )
+  )
+
+#| echo: true
+#| results: false
+summary(data_urban$infra_index)
+
+hist(data_urban$infra_index)
+
+#Doing a table
+
+# Road quality distribution 
+table5_road <- data_urban %>%
+  filter(!is.na(road_quality)) %>%
+  count(road_quality, name = "n") %>%
+  mutate(
+    Variable = "Road quality (EA_ROAD_C)",
+    Category = case_when(
+      road_quality == 3 ~ "Very good",
+      road_quality == 2 ~ "Good",
+      road_quality == 1 ~ "Fair",
+      road_quality == 0 ~ "Poor"
+    ),
+    Value = paste0(n, " (", round(100 * n / sum(n), 1), "%)")
+  ) %>%
+  select(Variable, Category, Value)
+
+# Index summary row 
+table5_index <- data_urban %>%
+  summarise(
+    Variable = "Neighborhood infrastructure index",
+    Category = "Mean (SD)",
+    Value = paste0(
+      round(mean(infra_index, na.rm = TRUE), 2),
+      " (", round(sd(infra_index, na.rm = TRUE), 2), ")"
+    )
+  )
+
+table5 <- bind_rows(table5_road, table5_index)
+
+kable(
+  table5,
+  caption = "Table 5. Neighborhood infrastructure conditions among urban respondents",
+  col.names = c("Variable", "Category", "Value")
+)
+
+
+road_plot <- data_urban %>%
+  filter(!is.na(road_quality)) %>%
+  mutate(
+    road_quality_f = factor(
+      road_quality,
+      levels = c(0, 1, 2, 3),
+      labels = c("Poor", "Fair", "Good", "Very good"),
+      ordered = TRUE
+    )
+  )
+
+ggplot(road_plot, aes(x = road_quality_f)) +
+  geom_bar(color = "white") +
+  labs(
+    title = "Road quality in enumeration areas (urban respondents)",
+    x = "Road quality (EA_ROAD_C)",
+    y = "Number of respondents"
+  ) +
+  theme_minimal()
+
+```
+
+Table 5 highlights substantial variation in neighborhood infrastructure quality among urban respondents. While a majority reside in areas with good or very good road conditions (approximately 89%), a non-negligible share of respondents live in neighborhoods with fair or poor road quality. The neighborhood infrastructure index reflects this heterogeneity, with an average value of 1.23 (SD = 0.22), indicating meaningful differences in local infrastructure conditions across urban enumeration areas. This variation provides a relevant contextual measure for examining perceptions of neighborhood insecurity.
+
+# Discussion:
+
+This study set out to explore how material deprivation and neighborhood infrastructure conditions relate to reliance on informal support networks and perceptions of insecurity in urban Morocco. The descriptive evidence provides partial but informative support for both hypotheses, while also highlighting important limitations related to measurement and scope.
+
+First, the results are broadly consistent with H1, which posits a relationship between material deprivation and reliance on informal support. Although most urban respondents report low levels of lived poverty, a substantial minority experience recurring shortages, particularly with respect to cash income and access to medical care. At the same time, nearly one-third of respondents report relying on family support, whereas reliance on friends or neighbors is much less common. This pattern suggests that informal support networks in urban Morocco are primarily family-centered, rather than broadly community-based. While the descriptive statistics alone do not establish a direct link between deprivation and support, the coexistence of material vulnerability and reliance on family assistance makes H1 empirically plausible and worth examining further in bivariate or multivariate analysis.
+
+Second, the descriptive findings also lend cautious support to H2, concerning neighborhood infrastructure and perceived insecurity. Although a majority of respondents report never feeling unsafe, more than one-third experience insecurity at least occasionally, indicating meaningful variation in perceived neighborhood safety within urban areas. At the same time, the analysis reveals that basic infrastructure services such as electricity and water are nearly universal in the urban subsample, limiting their usefulness as explanatory factors. Consequently, neighborhood infrastructure had to be operationalized using locally varying enumeration-area indicators, most notably road quality, facilities, and security-related infrastructure. Variation in road quality, in particular, suggests that infrastructure inequalities persist even within cities and may plausibly shape feelings of safety and exposure to risk.
+
+However, the descriptive analysis also underscores important measurement limitations. Neighborhood infrastructure is a multidimensional concept that cannot be fully captured by road quality or the presence of selected facilities alone. Factors such as housing quality, lighting, informal settlements, population density, or policing practices may be central to perceptions of insecurity. As such, the infrastructure index used here should be interpreted as a proxy for broader neighborhood conditions rather than a comprehensive measure. This limitation calls for caution when interpreting any observed association between infrastructure and insecurity and highlights the need to frame results as contextual correlations rather than causal effects.
+
+This being said, the descriptive statistics suggest that both hypotheses are empirically grounded but not deterministically supported. Material deprivation and infrastructure conditions exhibit sufficient variation in urban Morocco to justify further analysis, yet the observed patterns also emphasize the complexity of urban vulnerability and the limits of available survey-based proxies. Subsequent analyses should therefore be interpreted as exploratory, shedding light on associations rather than definitive mechanisms.
