@@ -7,16 +7,22 @@ editor: visual
 
 ```{r}
 
-# Loading the required packages
-library(tidyverse)
-library(DiagrammeR)
-library(janitor)
-library(knitr)
-library(stringr)
-library(ggplot2)
+# Loading the required packages:
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(DiagrammeR)
+  library(janitor)
+  library(knitr)
+  library(stringr)
+  library(ggplot2)
+})
 
-# Loading Afrobarometer data
-Afro <- read_csv("MOR_R10.Data_06June24.wtd_.final_.release_updated.13Feb25.csv")
+
+Afro <- read_csv(
+  "MOR_R10.Data_06June24.wtd_.final_.release_updated.13Feb25.csv",
+  show_col_types = FALSE
+)
+
 
 ```
 
