@@ -27,7 +27,7 @@ suppressPackageStartupMessages({
   library(lmtest)
 })
 
-
+#Loading the Afrobarometer dataset:
 Afro <- read_csv(
   "MOR_R10.Data_06June24.wtd_.final_.release_updated.13Feb25.csv",
   show_col_types = FALSE
@@ -37,7 +37,19 @@ Afro <- read_csv(
 
 # Introduction:
 
-Urban inequality in Morocco remains marked by persistent deficits in infrastructure, public services, and economic security within many urban neighborhoods. In such contexts, households face recurring exposure to material deprivation and insecurity. While these conditions are often framed as policy failures, they also shape how households adapt to constrained environments. Where formal welfare systems provide limited protection, informal support networks, particularly assistance from family, friends, and neighbors, play a central role in coping with risk and uncertainty. As shown by Moser (1998), social networks function as key assets for urban households facing structural vulnerability. Using Afrobarometer Round 10 data, this study examines how material deprivation relate to reliance on informal support and perceived insecurity in urban Morocco.
+Despite sustained improvements in economic and social indicators, inequality remains a persistent feature of Moroccan society. Development gains have not been evenly shared across populations or territories, and large disparities persist between urban and rural areas, regions, and income groups. As shown by Boutayeb and Helmert (2011), North African countries, including Morocco, have experienced rising average living standards alongside enduring social and health inequalities.
+
+These structural disparities translate into unequal exposure to material deprivation and insecurity. Where access to public services and formal welfare protection is limited, households must adapt to economic uncertainty. In such contexts, informal support networks, particularly assistance from family (kin), friends, and neighbors (non-kin), play a central role in coping with risk. As argued by Moser (1998), social networks function as key assets for households facing vulnerability.
+
+Using Afrobarometer Round 10 data, this study examines the relationship between material deprivation and reliance on informal support in Morocco, with explicit attention to differences between urban and rural settings.
+
+<div>
+
+![Figure 1: Inequality in the share of income or consumption](images/Screenshot%202026-02-15%20at%2017.51.19.png){fig-align="center" width="436"}
+
+</div>
+
+*This figure illustrates the unequal distribution of income or consumption between the poorest and richest population groups in selected North African countries, including Morocco. While the poorest 10% and 20% capture only a small share of total resources, the richest groups account for a disproportionately large share, highlighting persistent structural inequality despite overall development gains (Boutayeb & Helmert, 2011).*
 
 # Research question and hypotheses:
 
@@ -47,7 +59,9 @@ This study examines how material deprivation shapes households’ reliance on in
 
 "How does material deprivation affect households’ reliance on informal support networks, and how does this reliance differ between kin-based and non-kin-based networks in urban Morocco?"
 
-This research question focuses on material deprivation as a central constraint faced by urban households and treats informal social networks as adaptive mechanisms through which households cope with limited access to formal welfare provision.
+This research question focuses on material deprivation as a central constraint faced by urban households and treats informal social networks as adaptive mechanisms through which households cope. In fact, it tackles the topic from an individudal and bottom-up approach, in contrast to the literature that focuses on material deprivation from an economic, developmental, or policy standpoint. The issue about these kinds of approaches is that they ignore the ground-rooted realitities of people who suffer from material deprivation, forgetting to check the ways in which they adapt to their environments. If the literature focuses on this instead, we would be able to design more fitted policies, that do not disrupt the lives of these populations.
+
+This can be illustrated by the case of informal settlements (slums/bidonvilles) in Morocco. Because the country has been suffering from slums that disrupt not only the cities' landscapes but also the country's development index, most policies offer substitutes to these populations, such as state-offered residencies. It is, however, important to not that in most cases, the ones residing in slums would not leave their residencies, regardless of the proposed offers, unless there is a coercive and physically present authority that pushes them to do so. This shows that they have reasons to choose to live and stay in their settlements, despite facing material deprivation. And besides the fact that these substitutes are often not precisely accommodating to the majority of families in question, by making them leave their housings, these policies also makes them loose the benefits they acquire from living there, such as their reliance on informal networks. Therefore, more generally speaking, if policies take into account the individual choices, rationales, and motives of people experiencing material deprivation, there would be better solutions to numerous issues, like the one discussed.
 
 ## Hypotheses:
 
@@ -59,7 +73,7 @@ Drawing on work on urban vulnerability and informal coping strategies, as well a
 
 ```{r}
 
-#This is to visualize the research question, and how the hypothesis emerged. 
+#This DAG is to visualize the research question, and how the hypotheses emerged. 
 
 grViz("
 digraph RQ {
@@ -83,7 +97,7 @@ digraph RQ {
 
 ```
 
-Figure 1 summarizes the conceptual framework underlying the research question and the two hypotheses examined in this study.
+Figure 2: summarizes the conceptual framework underlying the research question and the two hypotheses examined in this study.
 
 ## Data and Data Preparation
 
