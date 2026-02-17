@@ -517,129 +517,6 @@ In this context, logistic regression models the probability that a respondent re
 
 Both inferential models include a common set of control variables (age, sex, and urban–rural location) to account for demographic and contextual factors that may influence access to informal support independently of material deprivation. Including these controls allows the analysis to more clearly isolate the association between material deprivation and reliance on informal support networks.
 
-## Assumptions and diagnostic checks
-
-Because both inferential models are estimated using logistic regression, they share the same core assumptions. Unlike linear regression, logistic regression does not require normally distributed residuals or homoscedasticity. Instead, model validity depends on (i) independence of observations, (ii) an approximately linear relationship between continuous predictors and the log-odds of the outcome, (iii) absence of severe multicollinearity, and (iv) absence of complete or quasi-complete separation. The following diagnostics are used to assess these assumptions for both models.
-
-### Independence of observations
-
-Model 1 contains one observation per respondent and therefore satisfies the independence assumption. In Model 2, each respondent contributes two observations (kin and non-kin support). To account for within-respondent dependence, standard errors in Model 2 are clustered at the respondent level.
-
-### Linearity of the logit (age)
-
-Age is the only continuous predictor. Linearity of the logit is assessed by comparing the baseline models to specifications allowing for non-linear effects of age using spline terms.
-
-```{r}
-
-#Creating any_support (so Model 1 diagnostics can run)
-Afro_analysis <- Afro_analysis %>%
-  mutate(
-    any_support = case_when(
-      kin_support == 1 | nonkin_support == 1 ~ 1,
-      kin_support == 0 & nonkin_support == 0 ~ 0,
-      TRUE ~ NA_real_
-    )
-  )
-
-#Ensuring Afro_long exists for Model 2 diagnostics
-Afro_long <- Afro_analysis %>%
-  select(dep_binary, age, sex, urban, kin_support, nonkin_support) %>%
-  pivot_longer(
-    cols = c(kin_support, nonkin_support),
-    names_to = "support_type",
-    values_to = "support"
-  ) %>%
-  mutate(
-    support_type = dplyr::recode(
-      support_type,
-      kin_support = "Kin",
-      nonkin_support = "Non-kin"
-    ) %>% factor(levels = c("Kin", "Non-kin"))
-  ) %>%
-  drop_na(dep_binary, support, age, sex, urban)
-
-
-#Model 1: linear vs spline age
-model_any_linear <- glm(
-  any_support ~ dep_binary + age + sex + urban,
-  data = Afro_analysis,
-  family = binomial(link = "logit")
-)
-
-model_any_spline <- glm(
-  any_support ~ dep_binary + ns(age, df = 3) + sex + urban,
-  data = Afro_analysis,
-  family = binomial(link = "logit")
-)
-
-anova(model_any_linear, model_any_spline, test = "Chisq")
-
-# Model 2: linear vs spline age 
-model_H2_linear <- glm(
-  support ~ dep_binary * support_type + age + sex + urban,
-  data = Afro_long,
-  family = binomial(link = "logit")
-)
-
-model_H2_spline <- glm(
-  support ~ dep_binary * support_type + ns(age, df = 3) + sex + urban,
-  data = Afro_long,
-  family = binomial(link = "logit")
-)
-
-anova(model_H2_linear, model_H2_spline, test = "Chisq")
-
-```
-
-Although diagnostic tests indicate that the relationship between age and the log-odds of receiving informal support is not strictly linear, age is included in the models solely as a control variable. Given the study’s focus on material deprivation, and to preserve parsimony and interpretability, age is retained in linear form. This modeling choice does not affect the substantive conclusions regarding the association between material deprivation and informal support.
-
-### Multicollinearity
-
-Multicollinearity is assessed using variance inflation factors (VIFs).
-
-```{r}
-vif(model_any)
-vif(model_H2)
-```
-
-Variance inflation factors were examined to assess multicollinearity. In Model 1, all VIF values are close to 1, indicating no collinearity among predictors. In Model 2, higher VIF values are observed for the interaction term and its constituent variables. This pattern is expected in models including interaction terms and reflects mechanical correlation rather than problematic multicollinearity. Importantly, VIF values for all non-interaction covariates remain low, suggesting no concerns regarding multicollinearity.
-
-### Separation
-
-Complete or quasi-complete separation is assessed to ensure that no predictor perfectly predicts the outcome.
-
-```{r}
-
-mf1 <- model.frame(model_any)
-y1  <- model.response(mf1)                 # outcome vector
-x1  <- model.matrix(model_any)             # design matrix
-
-detect_separation(x = x1, y = y1)
-
-mf2 <- model.frame(model_H2)
-y2  <- model.response(mf2)
-x2  <- model.matrix(model_H2)
-
-detect_separation(x = x2, y = y2)
-
-
-```
-
-Separation diagnostics indicate no evidence of complete or quasi-complete separation in either model. In both cases, the test reports Separation: FALSE, and all coefficients are associated with finite maximum likelihood estimates. This indicates that no predictor (or combination of predictors) perfectly predicts the outcome, and that coefficient estimates are not driven by perfect prediction patterns. The logistic regression models are therefore well-behaved and suitable for standard maximum likelihood estimation.
-
-### Cluster-robust inference for Model 2
-
-Because Model 2 uses long-format data with repeated observations per respondent, inference is based on standard errors clustered at the respondent level.
-
-```{r}
-
-vcov_H2_cluster <- vcovCL(
-  model_H2,
-  cluster = Afro_long$resp_id
-)
-
-```
-
 ## Model 1: Material deprivation and reliance on informal support (H1)
 
 ### Model specification
@@ -817,22 +694,20 @@ The interaction coefficient β3directly tests H2.
 ```{r}
 #Reshapeing the data to long format (kin vs non-kin)
 Afro_long <- Afro_analysis %>%
-  select(dep_binary, age, sex, urban, kin_support, nonkin_support) %>%
+  select(resp_id, dep_binary, age, sex, urban, kin_support, nonkin_support) %>%
   pivot_longer(
     cols = c(kin_support, nonkin_support),
     names_to = "support_type",
     values_to = "support"
   ) %>%
   mutate(
-    support_type = recode(
+    support_type = dplyr::recode(
       support_type,
       kin_support = "Kin",
       nonkin_support = "Non-kin"
-    ) %>%
-      factor(levels = c("Kin", "Non-kin"))
+    ) %>% factor(levels = c("Kin", "Non-kin"))
   ) %>%
-  drop_na(dep_binary, support, age, sex, urban)
-
+  drop_na(resp_id, dep_binary, support, age, sex, urban)
 # Model 2: Testing H2 via interaction between deprivation and support type
 
 model_H2 <- glm(
@@ -959,8 +834,121 @@ This means that while deprivation strongly increases reliance on informal suppor
 
 -   **Urban–rural residence**: also does not exhibit a significant independent effect.
 
-## Conclusion for H2
+### Conclusion for H2
 
 Model 2 provides partial but not decisive support for H2. Material deprivation substantially increases reliance on informal support networks, and kin-based support is clearly more prevalent than non-kin support overall. However, the interaction between material deprivation and support type is not statistically significant. This indicates that the difference in how deprivation affects kin versus non-kin support cannot be established with confidence.
 
 In other words, households experiencing material deprivation are much more likely to receive informal support, and this support is more often provided by kin. Yet, the data do not allow us to conclude that material deprivation disproportionately shifts reliance toward kin-based networks rather than non-kin networks beyond this baseline dominance.
+
+## Assumptions and diagnostic checks
+
+Both inferential models are estimated using logistic regression. Unlike ordinary least squares regression, logistic regression does not require normally distributed residuals or homoscedasticity. Instead, model validity depends on (i) independence of observations, (ii) correct functional form for continuous predictors (linearity of the logit), (iii) absence of problematic multicollinearity, and (iv) absence of complete or quasi-complete separation. The following diagnostics are used to assess these assumptions.
+
+### Independence of observations
+
+For Model 1, each observation corresponds to a distinct Afrobarometer respondent, and the independence assumption is therefore satisfied.
+
+For Model 2, the data are reshaped into long format such that each respondent contributes two observations (kin and non-kin support). These observations are not independent within respondent. To account for this within-respondent dependence, inference for Model 2 is based on standard errors clustered at the respondent level.
+
+```{r}
+# Cluster-robust standard errors for Model 2
+
+vcov_H2_cluster <- vcovCL(
+  model_H2,
+  cluster = Afro_long$resp_id
+)
+
+```
+
+### Linearity of the logit (age)
+
+Age is the only continuous predictor included in the models. Linearity of the logit is assessed by comparing baseline specifications with models allowing for non-linear age effects using spline terms. Likelihood ratio tests are used to evaluate whether allowing for non-linearity significantly improves model fit.
+
+```{r}
+
+# Model 1: linear vs spline age
+model_any_linear <- glm(
+  any_support ~ dep_binary + age + sex + urban,
+  data = Afro_analysis,
+  family = binomial(link = "logit")
+)
+
+model_any_spline <- glm(
+  any_support ~ dep_binary + ns(age, df = 3) + sex + urban,
+  data = Afro_analysis,
+  family = binomial(link = "logit")
+)
+
+anova(model_any_linear, model_any_spline, test = "Chisq")
+
+# Model 2: linear vs spline age
+model_H2_linear <- glm(
+  support ~ dep_binary * support_type + age + sex + urban,
+  data = Afro_long,
+  family = binomial(link = "logit")
+)
+
+model_H2_spline <- glm(
+  support ~ dep_binary * support_type + ns(age, df = 3) + sex + urban,
+  data = Afro_long,
+  family = binomial(link = "logit")
+)
+
+anova(model_H2_linear, model_H2_spline, test = "Chisq")
+
+```
+
+Likelihood-ratio tests comparing models with linear age terms to models allowing for non-linear age effects indicate that modeling age flexibly using spline terms significantly improves overall model fit in both specifications. This suggests that the relationship between age and the log-odds of receiving informal support is not strictly linear. However, age is included in the analysis solely as a control variable, and the substantive conclusions regarding the association between material deprivation and informal support, as well as differences between kin and non-kin networks, are unaffected by the functional form chosen for age. To preserve model parsimony and interpretability, age is therefore retained in linear form in the main analyses.
+
+### Multicollinearity
+
+Multicollinearity among predictors is assessed using variance inflation factors (VIFs). In models including interaction terms, higher VIF values for interaction-related variables are expected and do not indicate problematic multicollinearity.
+
+```{r}
+library(car)
+
+vif(model_any)
+vif(model_H2)
+
+```
+
+Variance inflation factors (VIFs) indicate no evidence of problematic multicollinearity in either model. In Model 1, all VIF values are close to 1 (ranging approximately from 1.01 to 1.07), suggesting that the predictors are only weakly correlated and that multicollinearity is negligible.
+
+In Model 2, which includes an interaction between material deprivation and support type, higher VIF values are observed for the support type variable (VIF ≈ 10.57) and for the interaction term (VIF ≈ 11.36). This pattern is expected in models with interaction terms, as interaction variables are mechanically correlated with their constituent main effects. Importantly, the VIFs for all other predictors remain low (around 1–1.4), indicating that multicollinearity does not meaningfully affect the estimation of the main effects or the interaction term. Anyways, these results suggest that multicollinearity is not a concern for the substantive interpretation of the models.
+
+### Separation
+
+To ensure that no predictor (or combination of predictors) perfectly predicts the outcome, separation diagnostics are conducted. The absence of separation implies that maximum likelihood estimates are finite and stable.
+
+```{r}
+detect_separation(
+  y = model_any$y,
+  x = model.matrix(model_any)
+)
+
+detect_separation(
+  y = model_H2$y,
+  x = model.matrix(model_H2)
+)
+
+
+
+```
+
+Separation diagnostics indicate no evidence of complete or quasi-complete separation in either logistic regression model. For both Model 1 and Model 2, the test reports Separation: FALSE, and all coefficients are associated with finite maximum likelihood estimates. This indicates that no predictor, nor any combination of predictors (including interaction terms), perfectly predicts the outcome. As a result, coefficient estimates are well defined and stable, and standard maximum likelihood estimation is appropriate for both models. The warning accompanying the output is informational and reflects the function’s design for use with binomial-response generalized linear models, rather than indicating a violation of model assumptions. Consequently, separation does not pose a concern for the validity or interpretation of the estimated results.
+
+## Discussion/Conclusion:
+
+This study set out to examine whether material deprivation is associated with reliance on informal support networks in Morocco, and whether deprivation alters the composition of support between kin and non-kin ties. While the analysis identifies a strong association between experiencing material deprivation and receiving informal support, the findings should be interpreted with caution.
+
+First, although the relationship between deprivation and informal support is statistically robust, the study relies on cross-sectional data, which prevents any causal interpretation. The analysis cannot determine whether deprivation leads individuals to rely on informal support, whether weak or strong networks shape exposure to deprivation, or whether both are driven by unobserved factors. The estimated associations therefore reflect correlation rather than causal effects.
+
+Second, the operationalization of material deprivation as a binary indicator simplifies a complex phenomenon. This choice was motivated by the highly skewed distribution of the lived poverty index and the analytical focus on exposure to deprivation as a threshold condition. However, this approach collapses meaningful variation in the intensity and persistence of hardship. As a result, the analysis cannot distinguish between occasional and chronic deprivation, which may have different implications for support mobilization.
+
+Third, the evidence regarding network composition under deprivation is weak. While kin-based support is substantially more prevalent than non-kin support overall, the interaction analysis does not provide statistically convincing evidence that deprivation disproportionately shifts reliance toward kin-based networks once baseline differences are accounted for. This suggests that the dominance of kin support reflects structural features of social organization rather than a specific response to deprivation. The hypothesis concerning differential network composition is therefore not strongly supported.
+
+Fourth, several diagnostic checks indicate minor model specification concerns. In particular, likelihood-ratio tests suggest that the effect of age on the log-odds of receiving support is not strictly linear. Although age is included only as a control variable and the substantive conclusions regarding deprivation are unaffected, this non-linearity highlights the limits of the chosen functional form and reinforces the descriptive nature of the analysis. More flexible modeling strategies could improve fit but were not central to the research question.
+
+Finally, the analysis captures receipt of support rather than network capacity or quality. Receiving assistance does not necessarily imply access to stable, reliable, or beneficial social ties, and informal support may also involve obligations or dependency. The data therefore provide only a partial view of social support dynamics.
+
+To conclude, the findings suggest that informal support is closely associated with material deprivation, but they offer limited insight into the mechanisms, directionality, or qualitative nature of this relationship. The results should be read as indicative rather than definitive, and as a starting point for more detailed longitudinal or network-based analyses rather than as strong evidence of adaptive behavioral responses.
