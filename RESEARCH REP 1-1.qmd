@@ -29,6 +29,7 @@ suppressPackageStartupMessages({
   library(splines)   # spline check for linearity of the logit
   library(brglm2)# separation detection
   library(detectseparation)
+  library(modelsummary)
 })
 
 #Loading the Afrobarometer dataset:
@@ -663,11 +664,11 @@ Material deprivation is strongly and positively associated with reliance on info
 
 Age is weakly but significantly negatively associated with reliance on informal support. Each additional year of age is associated with a small decrease in the odds of receiving informal assistance. Although statistically significant, the magnitude of this effect is modest, suggesting that age plays a secondary role relative to material deprivation.
 
-#### Sex - **Female (ref: Male): Odds ratio = 1.13** 
+#### Sex - **Female (ref: Male): Odds ratio = 1.13**
 
 Once material deprivation and other controls are taken into account, there is no statistically significant difference between men and women in the likelihood of relying on informal support. This suggests that any gender differences observed descriptively are largely driven by differences in exposure to deprivation rather than by sex-specific patterns of help-seeking.
 
-#### Urban–rural residence - **Rural (ref: Urban): Odds ratio = 1.01** 
+#### Urban–rural residence - **Rural (ref: Urban): Odds ratio = 1.01**
 
 Urban–rural residence does not have an independent effect on reliance on informal support once material deprivation and demographics are controlled for. This indicates that the relationship between deprivation and informal support operates similarly across settlement types, and is not primarily driven by urban–rural structural differences.
 
